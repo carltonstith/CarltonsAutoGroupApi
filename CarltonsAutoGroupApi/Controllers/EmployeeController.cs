@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using CarltonsAutoGroupApi.Models;
 using CarltonsAutoGroupApi.DBcontext;
+using Microsoft.EntityFrameworkCore;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -15,62 +16,78 @@ namespace CarltonsAutoGroupApi.Controllers
     [Route("api/[controller]")]
     public class EmployeeController : ControllerBase
     {
-        private readonly DatabaseContext _db;
+        private readonly DatabaseContext _context;
 
-        public EmployeeController(DatabaseContext db)
+        public EmployeeController(DatabaseContext context)
         {
-            _db = db;
+            _context = context;
         }
 
-        // Action Methods
+        // GET: api/Employee
         [HttpGet]
-        public IActionResult GetEmployees()
+        public async Task<ActionResult<IEnumerable<Employee>>> GetEmployees()
         {
-            return Ok(_db.Employees.ToList());
+            return await _context.Employees.ToListAsync();
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AddEmployee([FromBody] Employee objEmployee)
-        {
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult("There was an error while creating a new employee");
-            }
-            _db.Employees.Add(objEmployee);
-            await _db.SaveChangesAsync();
-
-            return new JsonResult("The employee was created successfully");
-        }
-
+        // PUT: api/Employee/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateEmployee([FromRoute] int id, [FromBody] Employee objEmployee)
+        public async Task<IActionResult> UpdateEmployee(int id, Employee employee)
         {
-            if (objEmployee == null || id != objEmployee.EmployeeId)
+            employee.EmployeeId = id;
+
+            _context.Entry(employee).State = EntityState.Modified;
+
+            try
             {
-                return new JsonResult("The employee was not found");
+                await _context.SaveChangesAsync();
             }
-            else
+            catch (DbUpdateConcurrencyException)
             {
-                _db.Employees.Update(objEmployee);
-                await _db.SaveChangesAsync();
-                return new JsonResult("The employee was updated successfully");
+                if (!EmployeeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
             }
+
+            return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEmployee([FromRoute] int id)
+        // POST: api/Employee
+        [HttpPost]
+        public async Task<ActionResult<Employee>> AddEmployee(Employee employee)
         {
-            var findEmployee = await _db.Employees.FindAsync(id);
+            _context.Employees.Add(employee);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetEmployee", new { id = employee.EmployeeId }, employee);
+        }
+
+        // DELETE: api/Employee/5
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<Employee>> DeleteEmployee(int id)
+        {
+            var findEmployee = await _context.Employees.FindAsync(id);
             if (findEmployee == null)
             {
                 return NotFound();
             }
             else
             {
-                _db.Employees.Remove(findEmployee);
-                await _db.SaveChangesAsync();
-                return new JsonResult("The employee was deleted successfully");
+                _context.Employees.Remove(findEmployee);
+                await _context.SaveChangesAsync();
+
+                return findEmployee;
             }
+        }
+
+        private bool EmployeeExists(int id)
+        {
+            return _context.Employees.Any(e => e.EmployeeId == id);
         }
     }
 }

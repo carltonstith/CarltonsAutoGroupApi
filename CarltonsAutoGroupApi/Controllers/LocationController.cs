@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using CarltonsAutoGroupApi.Models;
 using CarltonsAutoGroupApi.DBcontext;
+using Microsoft.EntityFrameworkCore;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -15,62 +16,77 @@ namespace CarltonsAutoGroupApi.Controllers
     [Route("api/[controller]")]
     public class LocationController : ControllerBase
     {
-        private readonly DatabaseContext _db;
+        private readonly DatabaseContext _context;
 
-        public LocationController(DatabaseContext db)
+        public LocationController(DatabaseContext context)
         {
-            _db = db;
+            _context = context;
         }
 
-        // Action Methods
+        // GET: api/Location
         [HttpGet]
-        public IActionResult GetLocations()
+        public async Task<ActionResult<IEnumerable<Location>>> GetLocations()
         {
-            return Ok(_db.Locations.ToList());
+            return await _context.Locations.ToListAsync();
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AddLocation([FromBody] Location objLocation)
-        {
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult("There was an error while creating a new location");
-            }
-            _db.Locations.Add(objLocation);
-            await _db.SaveChangesAsync();
-
-            return new JsonResult("The location was created successfully");
-        }
-
+        // PUT: api/Location/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateLocation([FromRoute] int id, [FromBody] Location objLocation)
+        public async Task<IActionResult> UpdateLocation(int id, Location location)
         {
-            if (objLocation == null || id != objLocation.LocationId)
+            location.LocationId = id;
+
+            _context.Entry(location).State = EntityState.Modified;
+
+            try
             {
-                return new JsonResult("The location was not found");
+                await _context.SaveChangesAsync();
             }
-            else
+            catch (DbUpdateConcurrencyException)
             {
-                _db.Locations.Update(objLocation);
-                await _db.SaveChangesAsync();
-                return new JsonResult("The location was updated successfully");
+                if (!LocationExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
             }
+
+            return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteLocation([FromRoute] int id)
+        // POST: api/Location
+        [HttpPost]
+        public async Task<ActionResult<Location>> AddLocation(Location location)
         {
-            var findLocation = await _db.Locations.FindAsync(id);
+            _context.Locations.Add(location);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetLocation", new { id = location.LocationId }, location);
+        }
+
+        // DELETE: api/Location/5
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<Location>> DeleteLocation(int id)
+        {
+            var findLocation = await _context.Locations.FindAsync(id);
             if (findLocation == null)
             {
                 return NotFound();
             }
             else
             {
-                _db.Locations.Remove(findLocation);
-                await _db.SaveChangesAsync();
-                return new JsonResult("The location was deleted successfully");
+                _context.Locations.Remove(findLocation);
+                await _context.SaveChangesAsync();
+                return findLocation;
             }
+        }
+
+        private bool LocationExists(int id)
+        {
+            return _context.Locations.Any(e => e.LocationId == id);
         }
     }
 }

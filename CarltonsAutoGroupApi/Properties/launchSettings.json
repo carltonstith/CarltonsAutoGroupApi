@@ -20,7 +20,7 @@
     "CarltonsAutoGroupApi": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "weatherforecast",
+      "launchUrl": "api/Employee",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

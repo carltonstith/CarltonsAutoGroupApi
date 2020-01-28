@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.HttpsPolicy;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +12,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using CarltonsAutoGroupApi.Models;
 using CarltonsAutoGroupApi.DBcontext;
+using Newtonsoft.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CarltonsAutoGroupApi
 {
@@ -22,6 +31,14 @@ namespace CarltonsAutoGroupApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
+                .AddNewtonsoftJson(options =>
+                {
+                    var resolver = options.SerializerSettings.ContractResolver;
+                    if (resolver != null)
+                        (resolver as DefaultContractResolver).NamingStrategy = null;
+                });
 
             services.AddDbContext<DatabaseContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
         }
